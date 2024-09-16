@@ -1,0 +1,27 @@
+version: "3.4"
+
+# Services Configuration
+services:
+  mongodb:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    ports:
+      - 27097:27017
+    volumes:
+      - /AppData/KK-Launcher:/data/db
+    command: mongod --noauth
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - llm-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+
+
+# Network Configuration
+networks:
+  llm-network:
+    external: true
