@@ -22,7 +22,7 @@ st.set_page_config(
 # TODO: Add search functionality and filters.
 
 client = pymongo.MongoClient(constants.MONGO_URI)
-db = client["launcher1"]
+db = client["launcher"]
 apps_collection = db["applications"]
 
 
@@ -150,7 +150,7 @@ def scan_and_import_playnite_shortcuts() -> None:
                 "title": file_name,
                 "subtitle": "Playnite",
                 "cwd": None,
-                "command": url,
+                "command": f"start {url}",
             }
 
             # Insert into MongoDB
@@ -168,6 +168,7 @@ def scan_and_import_playnite_shortcuts() -> None:
     st.success("Scan complete! All Playnite shortcuts have been imported.")
 
 
+@st.fragment
 def playnite_import_page() -> None:
     """Page for scanning and importing Playnite shortcuts"""
     with st.container(border=True):
@@ -188,8 +189,6 @@ def execute_command(command: str, cwd: str) -> None:
         to_run = ""
         if cwd:
             to_run += f"cd {cwd} &&"
-        if command and command.startswith("playnite://"):
-            to_run += f"start {command}"
         elif command:
             to_run += f"{command}"
 
@@ -225,60 +224,64 @@ def display_applications() -> None:
         for j in range(column_size):
             if i + j < len(apps):
                 app = apps[i + j]
-
-                with cols[j].container(border=True):
-                    card_image_path = app.get("picture", None)
-
-                    if card_image_path:
-                        # Resize image to 600x800
-                        card_image = Image.open(card_image_path).resize((600, 800))
-                    else:
-                        card_image = constants.FALLBACK_POSTER
-
-                    st.image(card_image, use_column_width=True)
-
-                    card_title = app.get("title", "")
-                    card_subtitle = app.get("subtitle", "")
-                    st.markdown(f"**{card_title}**")
-
-                    helper_text = (
-                        f"- **Platform:** {card_subtitle}\n"
-                        + f"- **Current Working Directory (CWD):** {app.get('cwd', 'N/A')}\n"
-                        + f"- **Command:** `{app.get('command', 'N/A')}`"
-                    )
-                    with stylable_container(
-                        key="green_button",
-                        css_styles="""
-                            [data-testid="stHorizontalBlock"] {
-                                gap: 0rem;
-                            }
-                            [data-testid="stBaseButton-primary"],[data-testid="stBaseButton-secondary"] {
-                                border-radius: 0rem;
-                            }
-                            """,
-                    ):
-                        button_col1, button_col2 = st.columns([4, 1])
-                        with button_col1:
-                            if st.button(
-                                "Run",
-                                key=i + j,
-                                use_container_width=True,
-                                type="primary",
-                                help=helper_text,
-                            ):
-                                execute_command(
-                                    app.get("command", ""), app.get("cwd", "")
-                                )
-
-                        with button_col2:
-                            if st.button(
-                                ":pencil2:",
-                                key=f"edit{i + j}",
-                                use_container_width=True,
-                            ):
-                                edit_application_by_id(str(app["_id"]))
+                with cols[j]:
+                    display_card(app, element_key=i+j)
 
 
+@st.fragment
+def display_card(app: dict, element_key: int) -> None:
+    with st.container(border=True):
+        card_image_path = app.get("picture", None)
+
+        if card_image_path:
+            # Resize image to 600x800
+            card_image = Image.open(card_image_path).resize((300, 400))
+        else:
+            card_image = constants.FALLBACK_POSTER
+
+        st.image(card_image, use_column_width=True)
+
+        card_title = app.get("title", "")
+        card_subtitle = app.get("subtitle", "")
+        st.markdown(f"**{card_title}**")
+
+        helper_text = (
+            f"- **Platform:** {card_subtitle}\n"
+            + f"- **Current Working Directory (CWD):** {app.get('cwd', 'N/A')}\n"
+            + f"- **Command:** `{app.get('command', 'N/A')}`"
+        )
+        with stylable_container(
+            key="green_button",
+            css_styles="""
+                [data-testid="stHorizontalBlock"] {
+                    gap: 0rem;
+                }
+                [data-testid="stBaseButton-primary"],[data-testid="stBaseButton-secondary"] {
+                    border-radius: 0rem;
+                }
+                """,
+        ):
+            button_col1, button_col2 = st.columns([4, 1])
+            with button_col1:
+                if st.button(
+                    "Run",
+                    key=element_key,
+                    use_container_width=True,
+                    type="primary",
+                    help=helper_text,
+                ):
+                    execute_command(app.get("command", ""), app.get("cwd", ""))
+
+            with button_col2:
+                if st.button(
+                    ":pencil2:",
+                    key=f"edit{element_key}",
+                    use_container_width=True,
+                ):
+                    edit_application_by_id(str(app["_id"]))
+
+
+@st.fragment
 def add_application() -> None:
     """Function to add a new application to the database"""
     with st.form("new_app_form"):
@@ -304,6 +307,7 @@ def add_application() -> None:
             st.success("Application registered successfully!")
 
 
+@st.fragment
 def footer() -> None:
     st.divider()
     st.caption(
@@ -321,6 +325,14 @@ def driver() -> None:
 
     # Page logic
     with tab1:
+        # st.write('''<style>
+
+        # [data-testid="column"] {
+        #     width: calc(33.3333% - 1rem) !important;
+        #     flex: 1 1 calc(33.3333% - 1rem) !important;
+        #     min-width: calc(33% - 1rem) !important;
+        # }
+        # </style>''', unsafe_allow_html=True)
         display_applications()
     with tab2:
         add_application()
