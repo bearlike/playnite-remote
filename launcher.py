@@ -4,6 +4,8 @@ import configparser
 import glob
 import os
 
+from streamlit_extras.stylable_container import stylable_container
+from bson.objectid import ObjectId
 import streamlit as st
 from PIL import Image
 import pymongo
@@ -22,6 +24,43 @@ st.set_page_config(
 client = pymongo.MongoClient(constants.MONGO_URI)
 db = client["launcher1"]
 apps_collection = db["applications"]
+
+
+@st.dialog("Edit Application")
+def edit_application_by_id(app_id: str):
+    """
+    Function to edit an existing application by its MongoDB _id.
+
+    Args:
+        app_id (str): The MongoDB _id of the application to be edited.
+    """
+    app_object_id = ObjectId(app_id)
+    app = apps_collection.find_one({"_id": app_object_id})
+
+    if not app:
+        st.error(f"Application with _id {app_id} not found.")
+        return
+
+    # Prefill the form with existing data
+    picture = st.text_input("Picture URL", app.get("picture", ""))
+    title = st.text_input("Title", app.get("title", ""))
+    subtitle = st.text_input("Subtitle", app.get("subtitle", ""))
+    cwd = st.text_input("Current Working Directory", app.get("cwd", ""))
+    command = st.text_input("Command", app.get("command", ""))
+
+    # Submit button to save the changes
+    if st.button("Save Changes", use_container_width=True, type="primary"):
+        # Update the application in MongoDB
+        updated_app = {
+            "picture": picture,
+            "title": title,
+            "subtitle": subtitle,
+            "cwd": cwd,
+            "command": command,
+        }
+        # Perform the update in MongoDB
+        apps_collection.update_one({"_id": app_object_id}, {"$set": updated_app})
+        st.toast(f"Application '{title}' has been updated successfully!")
 
 
 def parse_url_file(file_path: str) -> tuple:
@@ -207,15 +246,37 @@ def display_applications() -> None:
                         + f"- **Current Working Directory (CWD):** {app.get('cwd', 'N/A')}\n"
                         + f"- **Command:** `{app.get('command', 'N/A')}`"
                     )
-
-                    if st.button(
-                        "Run",
-                        key=i + j,
-                        use_container_width=True,
-                        type="primary",
-                        help=helper_text,
+                    with stylable_container(
+                        key="green_button",
+                        css_styles="""
+                            [data-testid="stHorizontalBlock"] {
+                                gap: 0rem;
+                            }
+                            [data-testid="stBaseButton-primary"],[data-testid="stBaseButton-secondary"] {
+                                border-radius: 0rem;
+                            }
+                            """,
                     ):
-                        execute_command(app.get("command", ""), app.get("cwd", ""))
+                        button_col1, button_col2 = st.columns([4, 1])
+                        with button_col1:
+                            if st.button(
+                                "Run",
+                                key=i + j,
+                                use_container_width=True,
+                                type="primary",
+                                help=helper_text,
+                            ):
+                                execute_command(
+                                    app.get("command", ""), app.get("cwd", "")
+                                )
+
+                        with button_col2:
+                            if st.button(
+                                ":pencil2:",
+                                key=f"edit{i + j}",
+                                use_container_width=True,
+                            ):
+                                edit_application_by_id(str(app["_id"]))
 
 
 def add_application() -> None:
