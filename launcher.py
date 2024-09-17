@@ -17,9 +17,10 @@ st.set_page_config(
     layout="wide",
 )
 
+# TODO: Add search functionality and filters.
 
 client = pymongo.MongoClient(constants.MONGO_URI)
-db = client["launcher"]
+db = client["launcher1"]
 apps_collection = db["applications"]
 
 
@@ -245,7 +246,7 @@ def add_application() -> None:
 def footer() -> None:
     st.divider()
     st.caption(
-        "Issues or suggestions? [Open an issue](https://github.com/bearlike/workday-badboy/issues)."
+        "Issues or suggestions? [Open an issue](https://github.com/bearlike/playnite-remote/issues)."
     )
     st.caption("Made with ❤️ by [Krishnakanth Alagiri](https://github.com/bearlike).")
 
