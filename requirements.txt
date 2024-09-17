@@ -2,3 +2,4 @@ streamlit
 pymongo
 streamlit-extras
 pillow
+streamlit-shadcn-ui
